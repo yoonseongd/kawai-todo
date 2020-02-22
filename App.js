@@ -6,21 +6,104 @@ import {
   StatusBar,
   TextInput,
   Dimensions,
-  Platform
+  Platform,
+  ScrollView
 } from "react-native";
+import { AppLoading } from "expo";
+import ToDo from "./ToDo";
+import uuidv1 from "uuid/v1";
 
 const { height, width } = Dimensions.get("window");
 
-export default function App() {
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      <Text style={styles.title}>Kawia To Do</Text>
-      <View style={styles.card}>
-        <TextInput style={styles.input} placeholder={"New To Do"} />
+export default class App extends React.Component {
+  state = {
+    newToDo: "",
+    loadedToDos: false,
+    toDos: {}
+  };
+  componentDidMount = () => {
+    this._loadToDos();
+  };
+  render() {
+    const { newToDo, loadedToDos, toDos } = this.state;
+    if (!loadedToDos) {
+      return <AppLoading />;
+    }
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        <Text style={styles.title}>Kawai To Do</Text>
+        <View style={styles.card}>
+          <TextInput
+            style={styles.input}
+            placeholder={"New To Do"}
+            value={newToDo}
+            onChangeText={this._controlNewToDo}
+            placeholderTextColor={"#999"}
+            returnKeyType={"done"}
+            autoCorrect={false}
+            onSubmitEditing={this._addToDo}
+          />
+          <ScrollView contentContainerStyle={styles.toDos}>
+            {Object.values(toDos).map(toDo => (
+              <ToDo key={toDo.id} {...toDo} deleteToDo={this._deleteToDo} />
+            ))}
+          </ScrollView>
+        </View>
       </View>
-    </View>
-  );
+    );
+  }
+  //여기까지가 render{}
+
+  _controlNewToDo = text => {
+    this.setState({
+      newToDo: text
+    });
+  };
+  _loadToDos = () => {
+    this.setState({
+      loadedToDos: true
+    });
+  };
+
+  _addToDo = () => {
+    const { newToDo } = this.state;
+    if (newToDo !== "") {
+      this.setState(prevState => {
+        const ID = uuidv1();
+        const newToDoObject = {
+          [ID]: {
+            id: ID,
+            isCompleted: false,
+            text: newToDo,
+            createdat: Date.now()
+          }
+        };
+        const newState = {
+          ...prevState, // "loadedToDos": true 상태를 그대로 가져는 효과
+          newToDo: "", // Submit 된 Input 텍스트 값을 지움, Reset
+          toDos: {
+            // 이전 Todo들을 가진 객체에 새로운 Todo가 추가됨, for in 구문을 사용하지 않고도 상태를 저장하고 합치는 효과
+            ...prevState.toDos,
+            ...newToDoObject
+          }
+        };
+        return { ...newState };
+      });
+    }
+  };
+
+  _deleteToDo = id => {
+    this.setState(prevState => {
+      const toDos = prevState.toDos;
+      delete toDos[id];
+      const newState = {
+        ...prevState,
+        ...toDos
+      };
+      return { ...newState };
+    });
+  };
 }
 
 const styles = StyleSheet.create({
@@ -56,5 +139,14 @@ const styles = StyleSheet.create({
         elevation: 3
       }
     })
+  },
+  input: {
+    padding: 20,
+    borderBottomColor: "#bbb",
+    borderBottomWidth: 1,
+    fontSize: 25
+  },
+  toDos: {
+    alignItems: "center"
   }
 });
